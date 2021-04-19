@@ -96,23 +96,27 @@ public class ResolvableType implements Serializable {
 
 	/**
 	 * The underlying Java type being managed.
+	 * 需要解析的 JDK Type 类型
 	 */
 	private final Type type;
 
 	/**
 	 * Optional provider for the type.
+	 * 对 Type 进行封装
 	 */
 	@Nullable
 	private final TypeProvider typeProvider;
 
 	/**
 	 * The {@code VariableResolver} to use or {@code null} if no resolver is available.
+	 * 对 TypeVariable 如何解析为 Class 的策略
 	 */
 	@Nullable
 	private final VariableResolver variableResolver;
 
 	/**
 	 * The component type for an array or {@code null} if the type should be deduced.
+	 * 缓存解析后数组泛型
 	 */
 	@Nullable
 	private final ResolvableType componentType;
@@ -120,15 +124,28 @@ public class ResolvableType implements Serializable {
 	@Nullable
 	private final Integer hash;
 
+	/**
+	 * 缓存解析后的 Class 类型
+	 */
 	@Nullable
 	private Class<?> resolved;
 
+	/**
+	 * 缓存解析后父类
+	 */
 	@Nullable
 	private volatile ResolvableType superType;
 
+
+	/**
+	 * 缓存解析后接口
+	 */
 	@Nullable
 	private volatile ResolvableType[] interfaces;
 
+	/**
+	 * 缓存解析后泛型
+	 */
 	@Nullable
 	private volatile ResolvableType[] generics;
 
@@ -161,7 +178,7 @@ public class ResolvableType implements Serializable {
 		this.variableResolver = variableResolver;
 		this.componentType = null;
 		this.hash = hash;
-		this.resolved = resolveClass();
+		this.resolved = resolveClass();// 关键
 	}
 
 	/**
@@ -691,6 +708,7 @@ public class ResolvableType implements Serializable {
 		}
 		ResolvableType[] generics = this.generics;
 		if (generics == null) {
+			// 1. 获取 Class 类型的泛型
 			if (this.type instanceof Class) {
 				Type[] typeParams = ((Class<?>) this.type).getTypeParameters();
 				generics = new ResolvableType[typeParams.length];
@@ -698,6 +716,7 @@ public class ResolvableType implements Serializable {
 					generics[i] = ResolvableType.forType(typeParams[i], this);
 				}
 			}
+			// 2. 获取 ParameterizedType 类型的泛型
 			else if (this.type instanceof ParameterizedType) {
 				Type[] actualTypeArguments = ((ParameterizedType) this.type).getActualTypeArguments();
 				generics = new ResolvableType[actualTypeArguments.length];
@@ -705,6 +724,7 @@ public class ResolvableType implements Serializable {
 					generics[i] = forType(actualTypeArguments[i], this.variableResolver);
 				}
 			}
+			// 3. WildcardType、TypeVariable 类型调用 resolveType() 重新解析
 			else {
 				generics = resolveType().getGenerics();
 			}
@@ -800,13 +820,16 @@ public class ResolvableType implements Serializable {
 		if (this.type == EmptyType.INSTANCE) {
 			return null;
 		}
+		// 1. Class 类型
 		if (this.type instanceof Class) {
 			return (Class<?>) this.type;
 		}
+		// 2. GenericArrayType 泛型数组，成员变量的 Class 类型
 		if (this.type instanceof GenericArrayType) {
 			Class<?> resolvedComponent = getComponentType().resolve();
 			return (resolvedComponent != null ? Array.newInstance(resolvedComponent, 0).getClass() : null);
 		}
+		//剩余的 ParameterizedType、WildcardType、TypeVariable 三种类型继续解析。
 		return resolveType().resolve();
 	}
 
@@ -816,9 +839,11 @@ public class ResolvableType implements Serializable {
 	 * as it cannot be serialized.
 	 */
 	ResolvableType resolveType() {
+		// 3. ParameterizedType 类型，getRawType 的 Class 类型
 		if (this.type instanceof ParameterizedType) {
 			return forType(((ParameterizedType) this.type).getRawType(), this.variableResolver);
 		}
+		// 4. WildcardType 类型，上界或下界的 Class 类型，如有多个只取第一个
 		if (this.type instanceof WildcardType) {
 			Type resolved = resolveBounds(((WildcardType) this.type).getUpperBounds());
 			if (resolved == null) {
@@ -826,6 +851,7 @@ public class ResolvableType implements Serializable {
 			}
 			return forType(resolved, this.variableResolver);
 		}
+		// 5. TypeVariable 类型
 		if (this.type instanceof TypeVariable) {
 			TypeVariable<?> variable = (TypeVariable<?>) this.type;
 			// Try default variable resolution
@@ -836,6 +862,7 @@ public class ResolvableType implements Serializable {
 				}
 			}
 			// Fallback to bounds
+			// 5.2 TypeVariable 默认取上界的 Class 类型，如有多个只取第一个
 			return forType(resolveBounds(variable.getBounds()), this.variableResolver);
 		}
 		return NONE;
@@ -1412,6 +1439,7 @@ public class ResolvableType implements Serializable {
 
 		// For simple Class references, build the wrapper right away -
 		// no expensive resolution necessary, so not worth caching...
+		// 1. Class 不用解析，所以没必要不缓存
 		if (type instanceof Class) {
 			return new ResolvableType(type, typeProvider, variableResolver, (ResolvableType) null);
 		}
@@ -1420,9 +1448,12 @@ public class ResolvableType implements Serializable {
 		cache.purgeUnreferencedEntries();
 
 		// Check the cache - we may have a ResolvableType which has been resolved before...
+		// 2. 其余的 Type 类型需要解析，所以先缓存起来
+		// 2.1 这个构造器专为缓存使用，不会触发 resolveClass() 操作
 		ResolvableType resultType = new ResolvableType(type, typeProvider, variableResolver);
 		ResolvableType cachedType = cache.get(resultType);
 		if (cachedType == null) {
+			// 2.2 如果缓存中没有就需要解析了，这个构造器会触发 resolveClass() 操作
 			cachedType = new ResolvableType(type, typeProvider, variableResolver, resultType.hash);
 			cache.put(cachedType, cachedType);
 		}
