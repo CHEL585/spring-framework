@@ -514,6 +514,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
+
+
 		synchronized (this.startupShutdownMonitor) {
 			// Prepare this context for refreshing.
 			//准备刷新的上下文环境，这是初始化前的准备及验证工作
@@ -592,6 +594,34 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				resetCommonCaches();
 			}
 		}
+
+		/**
+		 * 1. 初始化前的准备工作，例如对系统属性或者环境变量进行准备及验证。
+		 * 在某种情况下项目的使用需要读取某些系统变量，而这个变量的设置很可能会影响着系统
+		 * 的正确性，那么 ClassPathXm!ApplicationContext 为我们提供的这个准备函数就显得非常必要，
+		 * 它可以在 Spring 启动的时候提前对必需的变量进行存在性验证
+		 * 2. 初始化 BeanFactory 并进行 XML 文件读取
+		 * 之前有提到 ClassPathXm!ApplicationContext 包含 BeanFactory 所提供的一切特征，那么
+		 * 在这一步骤中将会复用 BeanFactory 中的 配置文件读取解析及其他功能，这一步之后，
+		 * ClassPathXmlApplicationContext 实际上就已经含了BeanFactory 所提供的功能，也就是可以
+		 * 进行 bean 的提取等基础操作了
+		 * 3. BeanFactory 进行各种功能填充
+		 * @Qualifier与@Autowired 应该是大家非常熟悉的注解 ，那么这两个注解正是在这一步骤中
+		 * 增加的支持
+		 * 4. 子类覆盖方法做额外的处理
+		 * Spring 之所以强大，为世人所推崇，除了它功能上为大家提供了便例外，还有一方面是它
+		 * 的完美架构，开放式的架构让使用它的程序员很容易根据业务需要扩展已经存在的功能。这种
+		 * 开放式的设计在 Spring 中随处可见，例如在本例中就提供了一个空的函数实现 postProcess-
+		 * BeanFactory 来方便程序员在业务上做进一步扩展
+		 * 5. 激活各种 BeanFactory 处理器
+		 * 6. 注册拦截 bean 创建的 bean 处理器，这里只是注册， 真正的调用是在 getBean 时候
+		 * 为上下文初始化 Message 源，即对不同语言的消息体进行国际化处理
+		 * 8. 初始化应用消息广播器，并放入“applicationEventMulticaster" bean中
+		 * 9. 留给子类来初始化其他的 bean
+		 * 10. 在所有注册的 bean中查找 listener bean, 注册到消息广播器中。
+		 * ll. 初始化剩下的单实例（非惰性的）
+		 * 12. 完成刷新过程，通知生命周期处理器 lifecycleProcessor 刷新过程，同时发出 Context-RefreshEvent 通知别人
+		 */
 	}
 
 	/**
@@ -669,15 +699,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// Tell the internal bean factory to use the context's class loader etc.
 		//设置beanFactory的classLoader为当前context的classLoader
 		beanFactory.setBeanClassLoader(getClassLoader());
-		//设置beanFactory的表达式语言处理器，从spring3开始增加了表达式语言的支持，默认可使用#{xxx}的形式来调用相关属性值
+		//设置beanFactory的表达式语言处理器，从spring3开始增加了表达式语言的支持，默认可使用#{bean.xxx}的形式来调用相关属性值
 		//这里增加了对SPEL语言的支持
 		beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
-		//为beanFactory增加一个propertyEditorRegistrar，它主要用于所有bean创建的过程
+		//为beanFactory增加一个propertyEditor，这个主要是对 bean的属性等设置管理的一个工具
 		//这里增加了对属性编辑器的支持
 		beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
 		// Configure the bean factory with context callbacks.
-		//为beanFactory新增一个BeanPostProcesso
+		//为beanFactory新增一个BeanPostProcessor
 		beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
 		//设置几个忽略自动装配的依赖的接口
 		/*因为在spring中增加了ApplicationContextAwareProcessor(它是BeanProcessor类型)，在其postProcessBeforeInitialization()中间接调用的

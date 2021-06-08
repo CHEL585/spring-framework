@@ -19,6 +19,7 @@ package org.springframework.context.support;
 import java.io.IOException;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
@@ -129,7 +130,7 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 			//为了序列化指定id，如有需要，使得这个BeanFactory从id反序列化到BeanFactory对象
 			beanFactory.setSerializationId(getId());
 			//定制beanFactory，设置相关属性，包括是否允许覆盖同名称的不同定义的对象、是否允许bean之间存在循环依赖
-			// 设置@Autowired和@Qualifier注解解析器QualifierAnnotationAutowireCandidateResolver(这在3.0版本中还是存在的)
+			// 设置@Autowired和@Qualifier注解解析器QualifierAnnotationAutowire-CandidateResolver(这在3.0版本中还是存在的)
 			customizeBeanFactory(beanFactory);
 			//初始化DocumentReader，并进行XML文件读取及解析
 			loadBeanDefinitions(beanFactory);
@@ -139,6 +140,18 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 		catch (IOException ex) {
 			throw new ApplicationContextException("I/O error parsing bean definition source for " + getDisplayName(), ex);
 		}
+		/**
+		 * 1. DefaultListabeBeanFactory
+		 * 在介绍 BeanFactory 时候不知道读者是否还有印象，声明式为 BeanFactory bf= new
+		 * XmlBeanFactory（” beanFactoryTest. xm ”），其中的xmlBeanFactory继承自DefaultListableBean-Factory ，并提供了 XmlBeanDefinitionReader类型的 reader属性， 也就是说 DefaultListableBean-Factory是容器的基础。 必须首先要实例化，那么在这里就是实例化 DefaultListableBeanFactory
+		 * 的步骤。
+		 * 2. 指定序列化 ID
+		 * 3. 定制BeanFactory
+		 * 4. 加载BeanDefinition
+		 * 5. 使用全局变量记录 BeanFactory 类实例
+		 * 因为 DefaultListableBeanFactory 类型的变量 beanFactory 是函数内的局部变量 ，所以要使用
+		 * 全局变量记录解析结果
+		 */
 	}
 
 	@Override
@@ -228,6 +241,11 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 		if (this.allowCircularReferences != null) {
 			beanFactory.setAllowCircularReferences(this.allowCircularReferences);
 		}
+		/**
+		 * 用于@Qualifier和@Autowired
+		 * beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver());
+		 */
+
 	}
 
 	/**
