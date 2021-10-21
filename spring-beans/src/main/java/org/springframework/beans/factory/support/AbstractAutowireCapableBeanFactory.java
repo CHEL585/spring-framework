@@ -139,6 +139,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * Whether to resort to injecting a raw bean instance in case of circular reference,
 	 * even if the injected bean eventually got wrapped.
 	 */
+	/**
+	 * 是否允许循环依赖的情况下,早期暴露给别人使用的bean在后期是否可以被包装。
+	 * 通俗理解:是否允许早期给别人使用的bean和最终的bean不一致，默认false，表示不允许
+	 */
 	private boolean allowRawInjectionDespiteWrapping = false;
 
 	/**

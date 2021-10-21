@@ -129,12 +129,24 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	//外部bean与被包含在外部bean的所有内部bean集合包含关系的缓存
 	/** Map between containing bean names: bean name to Set of bean names that the bean contains. */
 	private final Map<String, Set<String>> containedBeanMap = new ConcurrentHashMap<>(16);
-	//dependentBeanMap存放的是  依赖当前bean的 所有的bean的集合
+	//dependentBeanMap存放的是  依赖当前bean的 所有的bean的集合 //我被哪些依赖了
 	/** Map between dependent bean names: bean name to Set of dependent bean names. */
 	private final Map<String, Set<String>> dependentBeanMap = new ConcurrentHashMap<>(64);
-	// bean 实例化时需要依赖的 bean 的 beanName 集合映射关系集
+	// bean 实例化时需要依赖的 bean 的 beanName 集合映射关系集 //我依赖了哪些
 	/** Map between depending bean names: bean name to Set of bean names for the bean's dependencies. */
 	private final Map<String, Set<String>> dependenciesForBeanMap = new ConcurrentHashMap<>(64);
+
+	public Map<String, Set<String>> getContainedBeanMap() {
+		return containedBeanMap;
+	}
+
+	public Map<String, Set<String>> getDependentBeanMap() {
+		return dependentBeanMap;
+	}
+
+	public Map<String, Set<String>> getDependenciesForBeanMap() {
+		return dependenciesForBeanMap;
+	}
 
 	// SingletonBeanRegistry接口的registerSingleton方法的实现
 	@Override
