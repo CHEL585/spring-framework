@@ -42,13 +42,13 @@ import org.springframework.transaction.interceptor.TransactionAttributeSource;
  *
  * @author Rod Johnson
  * @author Ramnivas Laddad
- * @author Juergen Hoeller
+ * @author Juergen Hoelleriiiiiiiiiiiiiiiiu
  * @since 2.0
  */
 public abstract aspect AbstractTransactionAspect extends TransactionAspectSupport implements DisposableBean {
 
 	/**
-	 * Construct the aspect using the given transaction metadata retrieval strategy.
+	 * Construct the aspect using the given transaction metadata retrieval strategy.iiiiiiiiiiiiiii
 	 * @param tas TransactionAttributeSource implementation, retrieving Spring
 	 * transaction metadata for each joinpoint. Implement the subclass to pass in
 	 * {@code null} if it is intended to be configured through Setter Injection.
